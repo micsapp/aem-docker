@@ -72,9 +72,9 @@ manage_container() {
                 fi
 
                 # Verify installation files are present
-                if [ ! -f "aem-sdk/aem-quickstart.jar" ] || [ ! -f "aem-sdk/license.properties" ]; then
-                    echo "ERROR: Missing AEM quickstart jar or license.properties in aem-sdk/."
-                    echo "Please place them in $(pwd)/aem-sdk/ before starting."
+                if [ ! -f "aem-sdk/aem-quickstart.jar" ]; then
+                    echo "ERROR: Missing AEM quickstart jar in aem-sdk/."
+                    echo "Please place it in $(pwd)/aem-sdk/ before starting."
                     exit 1
                 fi
 
@@ -87,7 +87,6 @@ manage_container() {
                     -e AEM_RUNMODE="$runmode" \
                     -e AEM_PORT="$port" \
                     -v "$(pwd)/aem-sdk/aem-quickstart.jar:/opt/aem/aem-quickstart.jar:ro" \
-                    -v "$(pwd)/aem-sdk/license.properties:/opt/aem/license.properties:ro" \
                     -v "$(pwd)/aem-$service/crx-quickstart:/opt/aem/crx-quickstart" \
                     --restart unless-stopped \
                     "$IMAGE_NAME"

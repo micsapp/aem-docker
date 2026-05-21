@@ -39,9 +39,9 @@ fi
 case "$ACTION" in
     up)
         # Verify files exist before attempting compose up
-        if [ ! -f "aem-sdk/aem-quickstart.jar" ] || [ ! -f "aem-sdk/license.properties" ]; then
-            echo "ERROR: Missing AEM quickstart jar or license.properties in aem-sdk/."
-            echo "Please place them in $(pwd)/aem-sdk/ before starting."
+        if [ ! -f "aem-sdk/aem-quickstart.jar" ]; then
+            echo "ERROR: Missing AEM quickstart jar in aem-sdk/."
+            echo "Please place it in $(pwd)/aem-sdk/ before starting."
             exit 1
         fi
         echo "[*] Launching AEM Stack using: $COMPOSE_CMD up -d"
