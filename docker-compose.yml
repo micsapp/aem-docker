@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  author:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aem-author
+    ports:
+      - "4502:4502"
+      - "5005:5005"  # Host debug port 5005 connects to Author JVM
+    environment:
+      - AEM_RUNMODE=author,nosamplecontent
+      - AEM_PORT=4502
+      - AEM_DEBUG=false  # Change to true to enable JVM debugging
+      - JVM_OPTS=-Xms1024m -Xmx2048m -XX:MaxMetaspaceSize=512m
+    volumes:
+      - ./aem-sdk/aem-quickstart.jar:/opt/aem/aem-quickstart.jar:ro
+      - ./aem-author/crx-quickstart:/opt/aem/crx-quickstart
+    restart: unless-stopped
+
+  publish:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aem-publish
+    ports:
+      - "4503:4503"
+      - "5006:5005"  # Host debug port 5006 connects to Publish JVM
+    environment:
+      - AEM_RUNMODE=publish
+      - AEM_PORT=4503
+      - AEM_DEBUG=false  # Change to true to enable JVM debugging
+      - JVM_OPTS=-Xms1024m -Xmx2048m -XX:MaxMetaspaceSize=512m
+    volumes:
+      - ./aem-sdk/aem-quickstart.jar:/opt/aem/aem-quickstart.jar:ro
+      - ./aem-publish/crx-quickstart:/opt/aem/crx-quickstart
+    restart: unless-stopped

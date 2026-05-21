@@ -1,0 +1,18 @@
+# Proprietary AEM SDK binaries
+aem-sdk/*.jar
+aem-sdk/*.zip
+aem-sdk/license.properties
+
+# Unpacked AEM runtime repositories and generated data
+aem-author/crx-quickstart/
+aem-publish/crx-quickstart/
+
+# Local agent/tool state
+.agents/
+.codex/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
