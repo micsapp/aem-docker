@@ -1,0 +1,20 @@
+{
+  "name": "spa-mvn-frontend",
+  "version": "1.0.0",
+  "description": "Vue 3 + Vite frontend for SPA MVN, bundled into AEM clientlibs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "prod": "vite build && clientlib clientlib.config.cjs --verbose",
+    "dev": "vite build --mode development && clientlib clientlib.config.cjs --verbose"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.0",
+    "aem-clientlib-generator": "^1.8.0",
+    "vite": "^5.4.0"
+  }
+}

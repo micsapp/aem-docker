@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>${currentPage.title || 'SPA MVN'}</title>
+    <sly data-sly-use.clientlib="/libs/granite/sightly/templates/clientlib.html"
+         data-sly-call="${clientlib.css @ categories='spa-mvn.site'}"></sly>
+</head>
+<body>
+    <div id="spa-mvn-app"></div>
+    <sly data-sly-use.clientlib="/libs/granite/sightly/templates/clientlib.html"
+         data-sly-call="${clientlib.js @ categories='spa-mvn.site'}"></sly>
+</body>
+</html>

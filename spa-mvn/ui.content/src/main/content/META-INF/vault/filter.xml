@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workspaceFilter version="1.0">
+    <filter root="/conf/spa-mvn" mode="merge"/>
+    <filter root="/content/spa-mvn" mode="merge"/>
+    <filter root="/content/dam/spa-mvn" mode="merge">
+        <exclude pattern="/content/dam/spa-mvn(/.*)?"/>
+        <include pattern="/content/dam/spa-mvn/jcr:content(/.*)?"/>
+    </filter>
+    <filter root="/content/dam/spa-mvn/asset.jpg" mode="merge"/>
+    <filter root="/content/experience-fragments/spa-mvn" mode="merge"/>
+</workspaceFilter>

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1473e6"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#00a86b"/>
+    </marker>
+    <style>
+      .lane    { fill: #fafafa; stroke: #d0d0d0; stroke-dasharray: 4 4; }
+      .lane-h  { font-size: 14px; font-weight: 700; fill: #888; letter-spacing: 0.1em; text-transform: uppercase; }
+      .box     { stroke-width: 1.5; }
+      .box-dev { fill: #eaf2ff; stroke: #1473e6; }
+      .box-bld { fill: #fff4e0; stroke: #ff9500; }
+      .box-jcr { fill: #f0e7ff; stroke: #6a2bff; }
+      .box-rt  { fill: #e1f7ec; stroke: #00a86b; }
+      .box-warn{ fill: #ffeae8; stroke: #d33; }
+      .title   { font-size: 14px; font-weight: 700; fill: #1a1a1a; }
+      .subtitle{ font-size: 11px; fill: #555; }
+      .code    { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; fill: #1a1a1a; }
+      .badge   { font-size: 10px; font-weight: 700; fill: #fff; }
+      .arrow-label { font-size: 11px; fill: #1a1a1a; font-weight: 600; }
+      .arrow-sub   { font-size: 10px; fill: #555; }
+      .note    { font-size: 11px; fill: #555; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="800" y="36" text-anchor="middle" font-size="22" font-weight="800" fill="#1a1a1a">Option A &#8212; Quick path: Vite + curl direct to JCR</text>
+  <text x="800" y="58" text-anchor="middle" font-size="13" fill="#666">spa-hello/ &#8212; no Maven, no archetype, no content package. Files go straight into the JCR via Sling POST and WebDAV PUT.</text>
+
+  <!-- ====== LANE 1: LOCAL DEV ====== -->
+  <rect class="lane" x="30" y="90" width="450" height="780" rx="10"/>
+  <text class="lane-h" x="50" y="115">1 &#183; Local dev (your laptop)</text>
+
+  <!-- spa-hello/ tree -->
+  <rect class="box box-dev" x="50" y="135" width="410" height="320" rx="8"/>
+  <text class="title" x="70" y="158">spa-hello/</text>
+  <text class="subtitle" x="70" y="174">Vite + Vue 3 project + AEM helper files</text>
+
+  <text class="code" x="70" y="200">spa-hello/</text>
+  <text class="code" x="70" y="218">&#9500;&#9472; package.json          vue@3, vite, plugin-vue</text>
+  <text class="code" x="70" y="236">&#9500;&#9472; vite.config.js        base: '/content/hello/', stable names</text>
+  <text class="code" x="70" y="254">&#9500;&#9472; index.html            Vite dev entry only (not deployed)</text>
+  <text class="code" x="70" y="272">&#9500;&#9472; src/</text>
+  <text class="code" x="70" y="290">&#9474;   &#9500;&#9472; main.js           createApp(App).mount('#app')</text>
+  <text class="code" x="70" y="308">&#9474;   &#9492;&#9472; App.vue           single-file component</text>
+  <text class="code" x="70" y="326">&#9500;&#9472; aem/                  files mirroring JCR nodes</text>
+  <text class="code" x="70" y="344">&#9474;   &#9500;&#9472; page.html         HTL template</text>
+  <text class="code" x="70" y="362">&#9474;   &#9500;&#9472; js.txt            clientlib JS manifest</text>
+  <text class="code" x="70" y="380">&#9474;   &#9492;&#9472; css.txt           clientlib CSS manifest</text>
+  <text class="code" x="70" y="398">&#9492;&#9472; dist/                 Vite build output</text>
+  <text class="code" x="70" y="416">    &#9500;&#9472; index.js          ~62 KB Vue bundle</text>
+  <text class="code" x="70" y="434">    &#9492;&#9472; index.css         scoped styles bundled</text>
+
+  <!-- Tooling needs -->
+  <rect class="box box-dev" x="50" y="478" width="410" height="92" rx="8"/>
+  <text class="title" x="70" y="500">Tooling needs</text>
+  <text class="code" x="70" y="520">node v18+</text>
+  <text class="code" x="70" y="538">npm</text>
+  <text class="code" x="70" y="556">curl                  (no JDK, no Maven, no FileVault)</text>
+
+  <!-- Build command -->
+  <rect class="box box-bld" x="50" y="595" width="410" height="80" rx="8"/>
+  <text class="title" x="70" y="617">Build</text>
+  <text class="code" x="70" y="637">$ npm install</text>
+  <text class="code" x="70" y="655">$ npm run build</text>
+  <text class="subtitle" x="70" y="672">&#8594; vite build  &#8594;  dist/index.js, dist/index.css</text>
+
+  <!-- Deploy commands -->
+  <rect class="box box-bld" x="50" y="700" width="410" height="155" rx="8"/>
+  <text class="title" x="70" y="722">Deploy (per-file curl)</text>
+  <text class="subtitle" x="70" y="738">Two HTTP mechanisms, pick by what you create</text>
+  <text class="code" x="70" y="762">$ curl -F "jcr:primaryType=..." URL</text>
+  <text class="subtitle" x="70" y="776">  Sling POST &#8212; create typed nodes (cq:Page, etc.)</text>
+  <text class="code" x="70" y="800">$ curl -T file URL</text>
+  <text class="subtitle" x="70" y="814">  WebDAV PUT &#8212; upload file as nt:file at exact path</text>
+  <text class="code" x="70" y="838">$ curl -F "cmd=Activate" -F "path=..."</text>
+  <text class="subtitle" x="70" y="852">  /bin/replicate.json &#8212; push to publish</text>
+
+  <!-- ====== LANE 2: AEM AUTHOR JCR ====== -->
+  <rect class="lane" x="510" y="90" width="540" height="780" rx="10"/>
+  <text class="lane-h" x="530" y="115">2 &#183; AEM Author JCR  (localhost:4502)</text>
+
+  <!-- /apps/spa-hello -->
+  <rect class="box box-jcr" x="530" y="135" width="500" height="285" rx="8"/>
+  <text class="title" x="550" y="158">/apps/spa-hello</text>
+  <text class="subtitle" x="550" y="174">Created by Sling POST &amp; WebDAV PUT</text>
+
+  <text class="code" x="550" y="200">/apps/spa-hello                        sling:Folder</text>
+  <text class="code" x="550" y="218">&#9500;&#9472; components/</text>
+  <text class="code" x="550" y="236">&#9474;   &#9492;&#9472; page                              cq:Component</text>
+  <text class="code" x="550" y="254">&#9474;       &#9474;  jcr:title = "SPA Hello Page"</text>
+  <text class="code" x="550" y="272">&#9474;       &#9474;  componentGroup = ".hidden"</text>
+  <text class="code" x="550" y="290">&#9474;       &#9492;&#9472; page.html               nt:file (HTL)</text>
+  <text class="code" x="550" y="308">&#9492;&#9472; clientlibs/</text>
+  <text class="code" x="550" y="326">    &#9492;&#9472; clientlib-site         cq:ClientLibraryFolder</text>
+  <text class="code" x="550" y="344">        &#9474;  categories = ["spa-hello.site"]</text>
+  <text class="code" x="550" y="362">        &#9474;  allowProxy = true</text>
+  <text class="code" x="550" y="380">        &#9500;&#9472; js.txt, css.txt          manifests</text>
+  <text class="code" x="550" y="398">        &#9492;&#9472; index.js, index.css      Vue bundle</text>
+
+  <!-- /content/hello -->
+  <rect class="box box-jcr" x="530" y="440" width="500" height="155" rx="8"/>
+  <text class="title" x="550" y="463">/content/hello</text>
+  <text class="subtitle" x="550" y="479">A real cq:Page (not nt:file) so ContentDispositionFilter doesn't fire</text>
+
+  <text class="code" x="550" y="503">/content/hello                          cq:Page</text>
+  <text class="code" x="550" y="521">&#9492;&#9472; jcr:content                          cq:PageContent</text>
+  <text class="code" x="550" y="539">    &#9500;&#9472; jcr:title          = "Hello Vue"</text>
+  <text class="code" x="550" y="557">    &#9492;&#9472; sling:resourceType = "spa-hello/components/page"</text>
+  <text class="code" x="550" y="582">                                 (points at the component above)</text>
+
+  <!-- Gotcha box -->
+  <rect class="box box-warn" x="530" y="615" width="500" height="240" rx="8"/>
+  <text class="title" x="550" y="637" fill="#a02020">&#9888; Gotchas in this path</text>
+
+  <text class="code" x="550" y="660">curl -F "*=@file"  &#8594;  auto-named N_&lt;ts&gt; folders</text>
+  <text class="subtitle" x="550" y="674">Use  curl -T file URL  (WebDAV PUT) for exact-path uploads</text>
+
+  <text class="code" x="550" y="696">HTML under /content as nt:file</text>
+  <text class="subtitle" x="550" y="710">&#8594; Sling adds Content-Disposition: attachment (browser downloads)</text>
+  <text class="subtitle" x="550" y="724">&#8594; Solution: render via cq:Page + HTL script (no jcr:data)</text>
+
+  <text class="code" x="550" y="746">JS/CSS under /apps not anon-readable on publish</text>
+  <text class="subtitle" x="550" y="760">&#8594; Set allowProxy=true &#8594; served at /etc.clientlibs/ (anon OK)</text>
+
+  <text class="code" x="550" y="782">"Replicaiton Agent [publish] has invalid agent userId"</text>
+  <text class="subtitle" x="550" y="796">Default value = literal string "your_replication_user"</text>
+  <text class="subtitle" x="550" y="810">&#8594; curl -F "userId=" .../publish/jcr:content</text>
+
+  <text class="code" x="550" y="832">Author and publish on different docker networks</text>
+  <text class="subtitle" x="550" y="846">&#8594; docker network connect aem-net aem-publish</text>
+
+  <!-- ====== LANE 3: RUNTIME ====== -->
+  <rect class="lane" x="1080" y="90" width="490" height="780" rx="10"/>
+  <text class="lane-h" x="1100" y="115">3 &#183; Runtime  (browser request flow)</text>
+
+  <!-- Browser -->
+  <rect class="box box-rt" x="1100" y="135" width="450" height="60" rx="8"/>
+  <text class="title" x="1120" y="158">Browser</text>
+  <text class="code" x="1120" y="178">GET http://localhost:4502/content/hello.html</text>
+
+  <!-- Sling resolution -->
+  <rect class="box box-rt" x="1100" y="220" width="450" height="100" rx="8"/>
+  <text class="title" x="1120" y="243">Sling resource resolution</text>
+  <text class="code" x="1120" y="262">/content/hello &#8594; cq:Page</text>
+  <text class="code" x="1120" y="278">jcr:content/sling:resourceType =</text>
+  <text class="code" x="1120" y="294">    "spa-hello/components/page"</text>
+  <text class="code" x="1120" y="310">&#8594; script: /apps/spa-hello/components/page/page.html</text>
+
+  <!-- HTL render -->
+  <rect class="box box-rt" x="1100" y="345" width="450" height="155" rx="8"/>
+  <text class="title" x="1120" y="368">HTL render</text>
+  <text class="code" x="1120" y="388">page.html outputs:</text>
+  <text class="code" x="1120" y="406">  &lt;!DOCTYPE html&gt;</text>
+  <text class="code" x="1120" y="424">  &lt;html&gt;&lt;head&gt;</text>
+  <text class="code" x="1120" y="442">    &lt;link href="/etc.clientlibs/.../site.css"&gt;</text>
+  <text class="code" x="1120" y="460">  &lt;/head&gt;&lt;body&gt;</text>
+  <text class="code" x="1120" y="478">    &lt;div id="app"&gt;&lt;/div&gt;</text>
+  <text class="code" x="1120" y="496">    &lt;script src="/etc.clientlibs/.../site.js"&gt;</text>
+
+  <!-- Clientlib serve -->
+  <rect class="box box-rt" x="1100" y="525" width="450" height="105" rx="8"/>
+  <text class="title" x="1120" y="548">Clientlib HtmlLibraryServlet</text>
+  <text class="code" x="1120" y="568">/etc.clientlibs/spa-hello/clientlibs/</text>
+  <text class="code" x="1120" y="584">    clientlib-site.lc-&lt;hash&gt;-lc.min.js</text>
+  <text class="code" x="1120" y="600">    clientlib-site.lc-&lt;hash&gt;-lc.min.css</text>
+  <text class="subtitle" x="1120" y="620">Hash auto-regenerates when content changes &#8594; cache-bust</text>
+
+  <!-- Vue mount -->
+  <rect class="box box-rt" x="1100" y="655" width="450" height="80" rx="8"/>
+  <text class="title" x="1120" y="678">Vue mount</text>
+  <text class="code" x="1120" y="697">createApp(App).mount('#app')</text>
+  <text class="subtitle" x="1120" y="715">Hello World page is interactive in &lt; 50 ms</text>
+
+  <!-- Replication arrow + publish -->
+  <rect class="box box-jcr" x="1100" y="765" width="450" height="95" rx="8"/>
+  <text class="title" x="1120" y="788">AEM Publish  (localhost:4503)</text>
+  <text class="code" x="1120" y="807">Same tree, replicated from author</text>
+  <text class="code" x="1120" y="824">curl -F "cmd=Activate" -F "path=..."</text>
+  <text class="subtitle" x="1120" y="843">Anon visitor hits /content/hello.html, no auth needed</text>
+
+  <!-- Arrows: Lane 1 -> Lane 2 -->
+  <path d="M 460,460 L 530,460" stroke="#1473e6" stroke-width="2.5" fill="none" marker-end="url(#arrowBlue)"/>
+  <text class="arrow-label" x="495" y="450" text-anchor="middle" fill="#1473e6">build</text>
+
+  <path d="M 460,775 C 495,775 495,490 530,490" stroke="#ff9500" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="490" y="630" text-anchor="middle" fill="#ff9500">curl PUT files</text>
+  <text class="arrow-label" x="490" y="650" text-anchor="middle" fill="#ff9500">+ POST nodes</text>
+
+  <!-- Arrows: Lane 2 -> Lane 3 -->
+  <path d="M 1030,165 L 1100,165" stroke="#555" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1065" y="155" text-anchor="middle">request</text>
+
+  <path d="M 1100,272 C 1075,272 1075,290 1030,290" stroke="#555" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1067" y="262" text-anchor="middle">resolve</text>
+
+  <path d="M 1030,560 C 1075,560 1075,560 1100,575" stroke="#555" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1068" y="555" text-anchor="middle">serve</text>
+
+  <!-- Arrows inside Lane 3 (top-down) -->
+  <path d="M 1325,195 L 1325,220" stroke="#00a86b" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <path d="M 1325,320 L 1325,345" stroke="#00a86b" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <path d="M 1325,500 L 1325,525" stroke="#00a86b" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <path d="M 1325,630 L 1325,655" stroke="#00a86b" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <path d="M 1325,735 L 1325,765" stroke="#6a2bff" stroke-width="2" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1340" y="755">replicate</text>
+
+  <!-- ====== LEGEND ====== -->
+  <rect class="lane" x="30" y="895" width="1540" height="240" rx="10"/>
+  <text class="lane-h" x="50" y="920">4 &#183; Notes &amp; pros / cons</text>
+
+  <rect class="box box-dev" x="50" y="940" width="20" height="20" rx="4"/>
+  <text class="code" x="80" y="955">Source / local dev (Vue, Vite config)</text>
+  <rect class="box box-bld" x="350" y="940" width="20" height="20" rx="4"/>
+  <text class="code" x="380" y="955">Build / deploy step (npm, curl)</text>
+  <rect class="box box-jcr" x="650" y="940" width="20" height="20" rx="4"/>
+  <text class="code" x="680" y="955">JCR node in AEM</text>
+  <rect class="box box-rt" x="950" y="940" width="20" height="20" rx="4"/>
+  <text class="code" x="980" y="955">Runtime request handling</text>
+  <rect class="box box-warn" x="1250" y="940" width="20" height="20" rx="4"/>
+  <text class="code" x="1280" y="955">Gotcha / pitfall</text>
+
+  <text class="title" x="50" y="990">Pros</text>
+  <text class="code" x="50" y="1010">+ 5-minute setup, no Maven, no JDK, no archetype download</text>
+  <text class="code" x="50" y="1028">+ Direct visibility: every byte that lands in JCR was put there by a curl you can re-run</text>
+  <text class="code" x="50" y="1046">+ Great for JCR experiments, debugging permissions, learning Sling POST semantics</text>
+  <text class="code" x="50" y="1064">+ Tiny artifact &#8212; no .zip pipeline overhead</text>
+
+  <text class="title" x="800" y="990">Cons</text>
+  <text class="code" x="800" y="1010">- No promotion artifact &#8212; you re-curl each environment</text>
+  <text class="code" x="800" y="1028">- No version control over JCR state (only the local aem/ files match)</text>
+  <text class="code" x="800" y="1046">- No Java backend (servlets, Sling models)</text>
+  <text class="code" x="800" y="1064">- Cloud Manager / CI doesn't know what to deploy &#8212; not pipeline-friendly</text>
+  <text class="code" x="800" y="1082">- Replication has to be triggered manually per path or via tree-activation</text>
+
+  <text class="note" x="50" y="1115">See spa_example.md (Option A walkthrough) and aem_docker.md (author/publish container setup).</text>
+</svg>

@@ -1,0 +1,7 @@
+{
+    "scripts": [
+        "create path (sling:OrderedFolder) /content/dam/spa-mvn",
+        "create path (nt:unstructured) /content/dam/spa-mvn/jcr:content",
+        "set properties on /content/dam/spa-mvn/jcr:content\n  set cq:conf{String} to /conf/spa-mvn\n  set jcr:title{String} to \"SPA MVN\"\nend"
+    ]
+}
