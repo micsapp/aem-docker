@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>${currentPage.title || 'Hello Vue on AEM'}</title>
+    <sly data-sly-use.clientlib="/libs/granite/sightly/templates/clientlib.html"
+         data-sly-call="${clientlib.css @ categories='spa-hello.site'}"></sly>
+</head>
+<body>
+    <div id="app"></div>
+    <sly data-sly-use.clientlib="/libs/granite/sightly/templates/clientlib.html"
+         data-sly-call="${clientlib.js @ categories='spa-hello.site'}"></sly>
+</body>
+</html>
