@@ -1,182 +1,73 @@
-# Dispatcher Setup — Current State
+# Dispatcher Setup — Final State
 
-Snapshot of where we are in adding Adobe Dispatcher in front of the publish container. Resume from here.
+Adobe Dispatcher is **deployed and verified end-to-end**: in front of publish, serving the SPA, blocking dangerous paths, caching responses, and being purged on replication.
 
-Last updated: 2026-05-21
+Last updated: 2026-05-22
 
 ## Status
 
 | # | Task | Status |
 |---|---|---|
 | 16 | Write `dispatcher.md` design doc | ✅ done |
-| 17 | Obtain dispatcher binary / image | ⏸ **BLOCKED — waiting on user** |
-| 18 | Create `dispatcher/src/` config bundle | pending |
-| 19 | Add `dispatcher` service to `docker-compose.yml` | pending |
-| 20 | Configure flush agent on author | pending |
-| 21 | Verify dispatcher serves and caches | pending |
+| 17 | Obtain dispatcher binary / image | ✅ done — Adobe SDK `.sh`, image loaded |
+| 18 | Create `dispatcher/src/` config bundle | ✅ done — Adobe starter + custom rewrite |
+| 19 | Add `dispatcher` service to `docker-compose.yml` | ✅ done — YAML committed, not invoked |
+| 20 | Configure flush agent on author | ✅ done — replication purges cache |
+| 21 | Verify dispatcher serves and caches | ✅ done — all end-to-end checks pass |
 
-## The blocker
+## What's running
 
-Adobe's dispatcher module (`mod_dispatcher.so`) is proprietary. Three ways to obtain it; we picked the SDK-tarball path because the user has Adobe SDK access:
+| Container | Image | Ports | Networks |
+|---|---|---|---|
+| `aem-author` | (raw quickstart) | 4502, 5005 | aem-net |
+| `aem-publish` | (raw quickstart) | 4503, 5006 | aem-net, aem-docker_default |
+| `aem-dispatcher` | `adobe/aem-cs/dispatcher-publish:2.0.269` | 8080 → 80 | aem-net (alias `dispatcher`), aem-docker_default |
 
-1. ❌ `docker pull adobe/aem-ethos/dispatcher-publish` — **403, requires Adobe registry login** (verified)
-2. ❌ `docker pull adobe/aemcs-dispatcher-publish-amd64` — **403, requires Adobe registry login** (verified)
-3. ⏸ **Extract from Adobe SDK dispatcher tools tarball** — chosen path, file not yet on host
+**Note on launching:** dispatcher is started **standalone via `docker run`**, NOT via `docker compose up`. The compose YAML defines it for reference + use on more powerful machines, but on this host running all three via compose pegs CPU at 100%. See `MEMORY` feedback entry.
 
-User has confirmed they have the Linux dispatcher tools as a **`.sh` file** (Adobe distributes it as a self-extracting shell script, typical name `aem-sdk-dispatcher-tools-<version>-unix.sh`), but it has not been transferred to this machine yet.
+## Files in repo
 
-**To resume:** user places the `.sh` somewhere on this host and tells the agent the path.
+```
+aem-docker/
+├── docker-compose.yml                              service defs (3 svcs) — DO NOT `compose up` on this host
+├── dispatcher/
+│   ├── aem-sdk-dispatcher-tools-unix.sh            self-extracting installer (Makeself), 423 MB
+│   ├── dispatcher-sdk-2.0.269.1/                   extracted SDK
+│   │   ├── lib/dispatcher-publish-amd64.tar.gz     Docker image tarball (loaded)
+│   │   ├── lib/overwrite_cache_invalidation.sh     Adobe-provided permissive invalidate script
+│   │   ├── bin/, src/, docs/                       starter configs + helpers
+│   ├── overwrite_cache_invalidation.sh             copy of Adobe script, mounted into entrypoint
+│   └── src/                                        our customized config bundle (mounted as /mnt/dev/src)
+│       ├── conf.d/rewrites/rewrite.rules           "/" → "/content/spa-mvn.html"
+│       ├── conf.d/available_vhosts/default.vhost   from Adobe (env-var driven)
+│       ├── conf.d/enabled_vhosts/default.vhost     symlink
+│       ├── conf.dispatcher.d/available_farms/default.farm   from Adobe (env-var driven)
+│       ├── conf.dispatcher.d/enabled_farms/default.farm     symlink
+│       ├── conf.dispatcher.d/filters/, cache/, virtualhosts/, renders/, clientheaders/
+│       └── opt-in/USE_SOURCES_DIRECTLY             tells image to use /mnt/dev/src
+```
 
-## What already exists
-
-| Artifact | Path | State |
-|---|---|---|
-| Design doc | `/home/mli/aem-docker/dispatcher.md` | written, covers all phases |
-| SPA example doc | `/home/mli/aem-docker/spa_example.md` | written, includes link to dispatcher.md |
-| Author container | `aem-author` on `aem-net` (172.19.0.2) | running |
-| Publish container | `aem-publish` on `aem-docker_default` AND `aem-net` | running |
-| SPA page on author | `cq:Page` at `/content/hello` | rendering 200 at `/content/hello.html` |
-| SPA page on publish | replicated | rendering 200 anonymously |
-| Clientlib `allowProxy` | `/apps/spa-hello/clientlibs/clientlib-site` | `true` — served at `/etc.clientlibs/...` |
-| Replication agents | publish agent enabled, flush agent **not yet configured** | publish works, flush pending dispatcher |
-
-## What changes when dispatcher is added
-
-| Component | Before | After |
-|---|---|---|
-| `docker-compose.yml` | author + publish | author + publish + **dispatcher** (port 8080:80) |
-| Public entrypoint | `http://localhost:4503` (publish direct) | `http://localhost:8080` (dispatcher → publish) |
-| Cloudflare tunnel | `aem-publish.micstec.com → :4503` (when configured) | `aem-publish.micstec.com → :8080` |
-| Flush replication agent on author | not configured | enabled → `http://dispatcher:80/dispatcher/invalidate.cache` |
-| Cache invalidation flow | n/a | author replicates → publish stores + fires flush → dispatcher deletes cached files |
-| Bare URL `/` | 403 → 404 chain on publish | rewritten by dispatcher vhost to `/content/hello.html` |
-| Filters | none (publish exposes everything) | default-deny in `filters.any`, allow only `/content/hello*` + `/etc.clientlibs/*` |
-
-## Resume plan (when `.sh` arrives)
-
-### Step 1 — Unpack the dispatcher tools (task #17)
-
-Adobe's `.sh` is a self-extracting installer:
+## Launch command (canonical, repeatable)
 
 ```bash
-chmod +x /path/to/aem-sdk-dispatcher-tools-*-unix.sh
-mkdir -p /home/mli/aem-docker/dispatcher/tools
-cd /home/mli/aem-docker/dispatcher/tools
-/path/to/aem-sdk-dispatcher-tools-*-unix.sh
+docker run -d \
+  --name aem-dispatcher \
+  -p 8080:80 \
+  -v /home/mli/aem-docker/dispatcher/src:/mnt/dev/src:ro \
+  -v /home/mli/aem-docker/dispatcher/overwrite_cache_invalidation.sh:/docker_entrypoint.d/45-overwrite-invalidate.sh:ro \
+  -e AEM_HOST=publish \
+  -e AEM_PORT=4503 \
+  -e DISP_LOG_LEVEL=warn \
+  -e REWRITE_LOG_LEVEL=warn \
+  --restart unless-stopped \
+  adobe/aem-cs/dispatcher-publish:2.0.269
+
+docker network connect --alias dispatcher aem-net aem-dispatcher
 ```
 
-Expected output (typical structure of Adobe's dispatcher tools):
+The mounted `45-overwrite-invalidate.sh` runs *after* `40-generate-allowed-clients.sh` and replaces the restrictive default with `/0001 allow *` — needed because author and publish sit on different docker networks, so author's source IP would otherwise be denied.
 
-```
-dispatcher/tools/
-├── bin/
-│   ├── dispatcher_run.sh         convenience launcher (uses Adobe image — won't help us)
-│   └── docker_run.sh             same — wraps adobe image
-├── src/                          ← starter config bundle (use this!)
-│   ├── conf.d/
-│   ├── conf.dispatcher.d/
-│   └── opt-in/
-├── lib/
-│   └── mod_dispatcher.so         ← the binary module (this is what we need)
-└── version.info
-```
-
-Goal: identify two things —
-1. The `.so` file (linux amd64 build of `mod_dispatcher.so`) — needed if we build our own image
-2. The `src/` directory — starter config we'll adapt
-
-### Step 2 — Build a local dispatcher image around `httpd:2.4` (task #17 continued)
-
-Since we can't pull Adobe's image, we wrap their `.so` in a stock Apache:
-
-```dockerfile
-# /home/mli/aem-docker/dispatcher/Dockerfile
-FROM httpd:2.4
-
-# Copy Adobe's binary module into Apache's modules dir
-COPY tools/lib/mod_dispatcher.so /usr/local/apache2/modules/mod_dispatcher.so
-
-# Base httpd config: load dispatcher module + include /mnt/dev/src
-RUN sed -i \
-      -e '/LoadModule.*proxy_module/a LoadModule dispatcher_module modules/mod_dispatcher.so' \
-      -e '$a Include /mnt/dev/src/conf.d/enabled_vhosts/*.vhost' \
-      -e '$a <IfModule dispatcher_module>\n    DispatcherConfig /mnt/dev/src/conf.dispatcher.d/dispatcher.any\n    DispatcherLog /proc/self/fd/2\n    DispatcherLogLevel warn\n</IfModule>' \
-      /usr/local/apache2/conf/httpd.conf
-
-# Create cache dir
-RUN mkdir -p /mnt/var/www/html && chmod 777 /mnt/var/www/html
-
-EXPOSE 80
-```
-
-Build:
-
-```bash
-cd /home/mli/aem-docker/dispatcher
-docker build -t aem-dispatcher:local .
-```
-
-Note: the exact `sed` directives may need adjustment depending on the upstream httpd config layout. The important pieces are:
-- `LoadModule dispatcher_module modules/mod_dispatcher.so`
-- Top-level `DispatcherConfig` pointing at our `dispatcher.any`
-- Including our vhost files
-
-If the `.so` doesn't load (ABI mismatch, missing symbols), fallback path: try Apache 2.4 specifically pinned to a version matching what Adobe built against — check `tools/version.info` for the httpd version Adobe used.
-
-### Step 3 — Author the `src/` bundle (task #18)
-
-Don't reinvent — start from the `src/` Adobe ships in the tools tarball, then overlay our customizations from `dispatcher.md`:
-
-```bash
-mkdir -p /home/mli/aem-docker/dispatcher/src
-cp -r /home/mli/aem-docker/dispatcher/tools/src/* /home/mli/aem-docker/dispatcher/src/
-```
-
-Then edit per `dispatcher.md` "Key config files" section:
-
-| File | What we override |
-|---|---|
-| `conf.d/available_vhosts/publish.vhost` | `ServerName publish`, `ServerAlias aem-publish.micstec.com localhost`, include rewrite rules |
-| `conf.d/enabled_vhosts/publish.vhost` | symlink → `../available_vhosts/publish.vhost` |
-| `conf.d/rewrites/rewrite.rules` | `RewriteRule "^/?$" "/content/hello.html" [PT,L]` |
-| `conf.dispatcher.d/available_farms/publish.farm` | backend `publish:4503`, cache dir `/mnt/var/www/html`, allowedClients `172.*` |
-| `conf.dispatcher.d/enabled_farms/publish.farm` | symlink |
-| `conf.dispatcher.d/filters/filters.any` | default deny, allow `/content/hello*` + `/etc.clientlibs/*`, explicit deny `/system/*` `/crx/*` `/bin/*` `*.json` |
-| `conf.dispatcher.d/renders/default_renders.any` | `hostname "publish"`, `port "4503"` |
-| `conf.dispatcher.d/virtualhosts/virtualhosts.any` | `"aem-publish.micstec.com"`, `"localhost"`, `"publish"` |
-| `conf.dispatcher.d/cache/rules.any` | deny `*`, allow `*.html`, `*.css`, `*.js`, image extensions |
-| `conf.dispatcher.d/clientheaders/default_clientheaders.any` | keep upstream defaults |
-| `opt-in/USE_SOURCES_DIRECTLY` | touch (empty file, signals image to use src/ as-is) |
-
-(Each file's exact content is in `dispatcher.md`.)
-
-### Step 4 — Compose service (task #19)
-
-Add to `/home/mli/aem-docker/docker-compose.yml`:
-
-```yaml
-  dispatcher:
-    image: aem-dispatcher:local                # built in step 2
-    container_name: aem-dispatcher
-    depends_on: [publish]
-    ports:
-      - "8080:80"
-    volumes:
-      - ./dispatcher/src:/mnt/dev/src:ro
-    restart: unless-stopped
-    networks: [default]
-```
-
-⚠️ **Network alignment:** the current author/publish split (author on `aem-net`, publish on both `aem-net` AND `aem-docker_default`) must include dispatcher. Easiest: connect dispatcher to `aem-net` after `up`:
-
-```bash
-docker compose up -d dispatcher
-docker network connect aem-net aem-dispatcher
-```
-
-Or — the cleaner long-term fix — declare `aem-net` as external in compose and put all services on it.
-
-### Step 5 — Flush agent on author (task #20)
+## Author-side flush agent (one-time config)
 
 ```bash
 curl -u admin:admin \
@@ -188,66 +79,40 @@ curl -u admin:admin \
   http://localhost:4502/etc/replication/agents.author/flush/jcr:content
 ```
 
-The flush agent is HTTP-based, not durbo. Dispatcher's invalidate endpoint requires no auth but IP-gates via `/cache/allowedClients` in the farm config — our `172.*` allowlist covers the docker bridge.
+Persists across author restarts (stored in JCR at `/etc/replication/agents.author/flush`).
 
-### Step 6 — Verify (task #21)
+## End-to-end verification (all passed)
 
-```bash
-# Bare URL rewrites to SPA
-curl -sSI  http://localhost:8080/                                  # 302 → /content/hello.html
-curl -sSL  http://localhost:8080/                                  # 200 SPA HTML
-
-# Cache hit on second request (look at timing)
-time curl -sS http://localhost:8080/content/hello.html >/dev/null
-time curl -sS http://localhost:8080/content/hello.html >/dev/null  # ~10x faster
-
-# Filters block dangerous paths
-curl -sSI http://localhost:8080/system/console/bundles             # 404
-curl -sSI http://localhost:8080/content/hello.json                 # 404
-curl -sSI http://localhost:8080/crx/de                             # 404
-
-# Cache invalidation: edit page title on author, replicate, check dispatcher
-# The cache file at dispatcher's /mnt/var/www/html/content/hello.html should be deleted
-docker exec aem-dispatcher ls -la /mnt/var/www/html/content/      # before vs after
-```
-
-### Step 7 — Swap cloudflared (optional, after verify passes)
-
-```yaml
-# ~/.cloudflared/config.yml
-- hostname: aem-publish.micstec.com
-  service: http://localhost:8080     # was http://localhost:4503
-```
-
-```bash
-tmux kill-session -t cloudflared
-tmux new-session -d -s cloudflared \
-  'cloudflared tunnel run minipc2 2>&1 | tee -a ~/micsapp-webterminal/cloudflared.log'
-```
-
-## Risk register (things that might bite when we resume)
-
-| Risk | Likelihood | Mitigation |
+| Check | Command | Result |
 |---|---|---|
-| Adobe `mod_dispatcher.so` ABI mismatch with `httpd:2.4` latest | medium | Pin httpd to version listed in `tools/version.info`; fallback to `httpd:2.4-bookworm` |
-| `httpd:2.4` lacks modules dispatcher links against (e.g. mod_proxy_http) | low | Most needed modules are built into stock image; if missing, `apt install` in Dockerfile |
-| Adobe's `.sh` extracts to a non-standard layout | low | Inspect first, adjust paths in step 3 |
-| Cache invalidation request from publish rejected (403) | medium | `/cache/allowedClients` must list publish container's actual IP — check with `docker inspect aem-publish` |
-| Vhost `ServerName` mismatches `Host:` header from cloudflared | medium | Add `*` ServerAlias or explicit hostname; check Apache `access_log` to confirm hostname being received |
+| Bare URL rewrite fires | `curl -I http://localhost:8080/` | 302 → `/content/spa-mvn.html` |
+| SPA page renders via dispatcher | `curl -L http://localhost:8080/content/spa-mvn.html` | 200, Vue HTML shell |
+| JS clientlib proxied | `curl http://localhost:8080/etc.clientlibs/spa-mvn/clientlibs/clientlib-site.js` | 200, 72 KB |
+| CSS clientlib proxied | (...same for .css) | 200, 9.6 KB |
+| `/system/console/*` blocked | `curl -I http://localhost:8080/system/console/bundles` | 404 |
+| `/crx/de` blocked | `curl -I http://localhost:8080/crx/de` | 404 |
+| `*.json` selector blocked | `curl -I http://localhost:8080/content.json` | 404 |
+| Cache hit performance | `time curl -o /dev/null http://localhost:8080/content/spa-mvn.html` | 23 ms |
+| Author → dispatcher reach | `docker exec aem-author curl -X POST .../invalidate.cache` | 200 |
+| **Replication purges cache file** | Activate page → check disk | File deleted from `/mnt/var/www/html/content/spa-mvn/us/en.html` ✓ |
 
-## When we resume
+## Operational notes
 
-User says: *"the dispatcher .sh is at `<path>`, continue"*
+- **Logs:** `docker exec aem-dispatcher tail -f /var/log/apache2/dispatcher.log` shows hit/miss/blocked.
+- **Cache contents:** `docker exec aem-dispatcher find /mnt/var/www/html -type f` shows what's on disk.
+- **Manual purge:** `docker exec aem-dispatcher sh -c 'rm -rf /mnt/var/www/html/*'` (or rely on flush agent).
+- **Restart dispatcher:** `docker restart aem-dispatcher` — preserves the cache.
+- **Reset cache:** `docker exec aem-dispatcher sh -c 'rm -rf /mnt/var/www/html/*'`.
 
-Agent action:
-1. `TaskList` → confirm tasks 17–21 still pending
-2. `TaskUpdate 17 → in_progress`
-3. Execute step 1 above (unpack)
-4. Iterate through steps 2–7
+## What's next (optional, not blocking)
+
+- **Cloudflare tunnel swap:** point `aem-publish.micstec.com` at `http://localhost:8080` (dispatcher) instead of `:4503` (publish). One line edit in `~/.cloudflared/config.yml` + tmux session restart.
+- **Tighten filters:** the default Adobe filter set is generous (allows `/content/*.html`, `/etc.clientlibs/*`, plus various forms/graphql/screens paths). For a small site, narrowing to just `/content/spa-mvn/*` is reasonable.
+- **TLS:** Cloudflare handles HTTPS at the edge; origin stays HTTP. No mod_ssl config needed.
 
 ## Related docs
 
-- `dispatcher.md` — full design + config reference
-- `spa_example.md` — what we're protecting with dispatcher
-- `aem_docker.md` — author/publish setup
-- `cloudflared.md` — public tunnel
+- `dispatcher.md` — design doc / full config reference
+- `spa_example.md`, `mvn_spa_dev.md` — what the dispatcher is fronting
+- `aem_docker.md`, `cloudflared.md` — surrounding stack
+- Memory `feedback-aem-docker-no-compose-up` — why we don't run `docker compose up` on this host

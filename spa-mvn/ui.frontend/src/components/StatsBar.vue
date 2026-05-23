@@ -1,10 +1,10 @@
 <script setup>
-const stats = [
-  { value: '12,000+', label: 'Brands shipping daily' },
-  { value: '4.2B', label: 'Page renders / month' },
-  { value: '99.99%', label: 'Platform uptime SLA' },
-  { value: '38ms', label: 'Median edge latency' }
-]
+defineProps({
+  stats: {
+    type: Array,
+    default: () => []
+  }
+})
 </script>
 
 <template>

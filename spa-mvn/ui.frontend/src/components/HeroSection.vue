@@ -1,23 +1,35 @@
 <script setup>
+defineProps({
+  hero: {
+    type: Object,
+    default: () => ({
+      eyebrow: '',
+      title: 'Loading…',
+      accent: '',
+      lede: '',
+      ctaPrimaryLabel: '',
+      ctaPrimaryUrl: '#',
+      ctaSecondaryLabel: '',
+      ctaSecondaryUrl: '#'
+    })
+  }
+})
 </script>
 
 <template>
   <section class="hero">
     <div class="hero__bg"></div>
     <div class="container hero__inner">
-      <p class="hero__eyebrow">Experience Cloud · Spring 2026 release</p>
+      <p v-if="hero.eyebrow" class="hero__eyebrow">{{ hero.eyebrow }}</p>
       <h1 class="hero__title">
-        Content velocity, <span class="hero__accent">without the chaos</span>.
+        {{ hero.title }} <span v-if="hero.accent" class="hero__accent">{{ hero.accent }}</span>.
       </h1>
-      <p class="hero__lede">
-        SPA Mountain unifies authoring, personalization, and analytics into one place so your team
-        ships campaigns 3&times; faster — across every channel, every locale, every device.
-      </p>
+      <p v-if="hero.lede" class="hero__lede">{{ hero.lede }}</p>
       <div class="hero__actions">
-        <a href="#" class="btn btn--primary">Start free trial</a>
-        <a href="#" class="btn btn--ghost">
+        <a v-if="hero.ctaPrimaryLabel" :href="hero.ctaPrimaryUrl || '#'" class="btn btn--primary">{{ hero.ctaPrimaryLabel }}</a>
+        <a v-if="hero.ctaSecondaryLabel" :href="hero.ctaSecondaryUrl || '#'" class="btn btn--ghost">
           <span class="btn__play">&#9658;</span>
-          Watch 2-min demo
+          {{ hero.ctaSecondaryLabel }}
         </a>
       </div>
       <div class="hero__meta">
@@ -95,10 +107,7 @@
   border: none;
   transition: transform 0.15s ease, background 0.15s ease;
 }
-.btn--primary {
-  background: #ffffff;
-  color: #0c0e2c;
-}
+.btn--primary { background: #ffffff; color: #0c0e2c; }
 .btn--primary:hover { background: #f0f0f0; transform: translateY(-1px); }
 
 .btn--ghost {

@@ -36,3 +36,29 @@ services:
       - ./aem-sdk/aem-quickstart.jar:/opt/aem/aem-quickstart.jar:ro
       - ./aem-publish/crx-quickstart:/opt/aem/crx-quickstart
     restart: unless-stopped
+    networks:
+      - default
+      - aem-net
+
+  dispatcher:
+    image: adobe/aem-cs/dispatcher-publish:2.0.269
+    container_name: aem-dispatcher
+    depends_on: [publish]
+    ports:
+      - "8080:80"
+    environment:
+      - AEM_HOST=publish
+      - AEM_PORT=4503
+      - AEM_IP=172.*.*.*
+      - DISP_LOG_LEVEL=warn
+      - REWRITE_LOG_LEVEL=warn
+    volumes:
+      - ./dispatcher/src:/mnt/dev/src:ro
+    restart: unless-stopped
+    networks:
+      - default
+      - aem-net
+
+networks:
+  aem-net:
+    external: true

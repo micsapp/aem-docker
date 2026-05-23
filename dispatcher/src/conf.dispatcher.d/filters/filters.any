@@ -1,0 +1,16 @@
+#
+# This file contains the filter ACL, and can be customized.
+#
+# By default, it includes the default filter ACL.
+#
+
+$include "./default_filters.any"
+
+# === Custom allows for SPA MVN headless Content Fragments ===========
+# Default rules deny /content/dam/* JSON with jcr:content / numeric selectors;
+# re-allow specifically for our CF paths so anonymous fetches from the Vue
+# SPA work without opening the whole DAM up.
+#
+# Last-match-wins: these rules come after the include so they override.
+
+/0500 { /type "allow" /method "GET" /url "/content/dam/spa-mvn/cf/*" }

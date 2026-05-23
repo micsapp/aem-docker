@@ -139,7 +139,7 @@ fi
 # ----- build -----------------------------------------------------------------
 cd "$PROJECT_DIR"
 
-MVN_ARGS=( -B -PautoInstallPackage )
+MVN_ARGS=( -B -PautoInstallPackage -Dvault.user="$AEM_USER" -Dvault.password="$AEM_PASS" )
 [ "$SKIP_TESTS" = "1" ] && MVN_ARGS+=( -DskipTests -Dmaven.test.skip=true )
 
 step "Build  ($(c_bold "$MODE"))"

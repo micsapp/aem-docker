@@ -1,0 +1,15 @@
+#
+# This file contains the rewrite rules, and can be customized.
+#
+# By default, it includes just the rewrite rules. You can
+# add rewrite rules to this file but you should still include
+# the default rewrite rules.
+
+# Custom: redirect bare hostname to the SPA home page.
+# Hit "/" (or "/index.html") -> /content/spa-mvn.html
+# (Sling on the publish backend then redirects to /content/spa-mvn/us/en.html.)
+RewriteEngine On
+RewriteRule "^/$"          "/content/spa-mvn.html"  [PT,L]
+RewriteRule "^/index.html$" "/content/spa-mvn.html"  [PT,L]
+
+Include conf.d/rewrites/default_rewrite.rules

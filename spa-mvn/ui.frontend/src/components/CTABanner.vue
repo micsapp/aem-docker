@@ -1,9 +1,18 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+const props = defineProps({
+  cta: {
+    type: Object,
+    default: () => ({ title: '', lede: '', ctaLabel: 'Submit' })
+  }
+})
+
 const email = ref('')
 const submitted = ref(false)
-const buttonLabel = computed(() => (submitted.value ? "Thanks — we'll be in touch" : 'Book demo'))
+const buttonLabel = computed(() =>
+  submitted.value ? "Thanks — we'll be in touch" : (props.cta.ctaLabel || 'Submit')
+)
 
 function submit() {
   if (!email.value) return
@@ -16,8 +25,8 @@ function submit() {
     <div class="container">
       <div class="cta__card">
         <div>
-          <h2 class="cta__title">Ready to see SPA Mountain on your stack?</h2>
-          <p class="cta__lede">Get a personalized demo &mdash; we&rsquo;ll spin up a sandbox with your sample content in under an hour.</p>
+          <h2 class="cta__title">{{ cta.title }}</h2>
+          <p class="cta__lede">{{ cta.lede }}</p>
         </div>
 
         <form class="cta__form" @submit.prevent="submit">
@@ -29,9 +38,7 @@ function submit() {
             class="cta__input"
             :disabled="submitted"
           />
-          <button type="submit" class="cta__btn" :disabled="submitted">
-            {{ buttonLabel }}
-          </button>
+          <button type="submit" class="cta__btn" :disabled="submitted">{{ buttonLabel }}</button>
         </form>
       </div>
     </div>

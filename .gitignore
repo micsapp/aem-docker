@@ -3,6 +3,20 @@ aem-sdk/*.jar
 aem-sdk/*.zip
 aem-sdk/license.properties
 
+# Adobe Dispatcher SDK (~835 MB, proprietary; download from Adobe Software Distribution)
+dispatcher/aem-sdk-dispatcher-tools-*.sh
+dispatcher/dispatcher-sdk-*/
+
+# Maven build output + node deps
+spa-mvn/**/target/
+spa-mvn/**/node_modules/
+spa-mvn/**/dist/
+spa-mvn/ui.frontend/node/
+
+# Quick-deploy scratch space
+spa-hello/node_modules/
+spa-hello/dist/
+
 # Unpacked AEM runtime repositories and generated data
 aem-author/crx-quickstart/
 aem-publish/crx-quickstart/
