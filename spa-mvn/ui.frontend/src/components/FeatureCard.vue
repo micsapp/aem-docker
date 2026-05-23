@@ -1,16 +1,19 @@
 <script setup>
+import EditableText from './EditableText.vue'
+
 defineProps({
   icon: { type: String, required: true },
   title: { type: String, required: true },
-  body: { type: String, required: true }
+  body: { type: String, required: true },
+  fragmentPath: { type: String, default: '' }
 })
 </script>
 
 <template>
   <article class="card">
     <div class="card__icon" v-html="icon"></div>
-    <h3 class="card__title">{{ title }}</h3>
-    <p class="card__body">{{ body }}</p>
+    <EditableText tag="h3" class="card__title" :fragment-path="fragmentPath" field-name="title" :model-value="title" />
+    <EditableText tag="p"  class="card__body"  :fragment-path="fragmentPath" field-name="body"  :model-value="body" />
     <a href="#" class="card__link">Learn more &rarr;</a>
   </article>
 </template>

@@ -33,7 +33,7 @@ URL_INSTALL_SCRIPT="https://tnas_d.micsapp.com/s/install-aem"
 
 # Image tags we expect after loading
 AEM_IMAGE="aem-base:latest"
-DISP_IMAGE="adobe/aem-cs/dispatcher-publish:2.0.269"
+DISP_IMAGE="adobe/aem-cs/dispatcher-publish:2.0.270"
 
 # Container names + ports
 AUTHOR_NAME="aem-author"

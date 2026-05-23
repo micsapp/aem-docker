@@ -9,6 +9,7 @@ import StatsBar from './components/StatsBar.vue'
 import LogoStrip from './components/LogoStrip.vue'
 import CTABanner from './components/CTABanner.vue'
 import AppFooter from './components/AppFooter.vue'
+import EditToolbar from './components/EditToolbar.vue'
 
 const loading = ref(true)
 const error = ref(null)
@@ -34,6 +35,7 @@ onMounted(async () => {
 </script>
 
 <template>
+  <EditToolbar />
   <AppHeader />
 
   <div v-if="loading" class="loader">

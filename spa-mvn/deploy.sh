@@ -5,19 +5,30 @@
 # Pick a narrower scope manually with --frontend / --core if you know
 # only that part changed; the smaller scopes finish in ~10-25 s vs
 # ~60 s for a full clean.
+#
+# Build runner auto-detected:
+#   - if `mvn` is on PATH and JAVA_HOME points at a real JDK, runs on the host
+#   - otherwise wraps mvn in `docker run maven:3.9-eclipse-temurin-21`
+#   so a developer with only docker installed can build without setting up JDK 21
+#   + Maven locally. Force one or the other with --docker / --host-mvn.
 
 set -euo pipefail
 
 # ----- paths / defaults ------------------------------------------------------
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JAVA_HOME_DEFAULT="/usr/lib/jvm/java-11-openjdk-amd64"
+JAVA_HOME_DEFAULT="/usr/lib/jvm/java-21-openjdk-amd64"
 
 AEM_AUTHOR="${AEM_AUTHOR:-http://localhost:4502}"
 AEM_PUBLISH="${AEM_PUBLISH:-http://localhost:4503}"
 AEM_USER="${AEM_USER:-admin}"
 AEM_PASS="${AEM_PASS:-admin}"
 
+# Containerized-build defaults (used when BUILDER=docker)
+MAVEN_IMAGE="${MAVEN_IMAGE:-maven:3.9-eclipse-temurin-21}"
+MAVEN_CACHE_VOL="${MAVEN_CACHE_VOL:-maven-cache}"
+
 MODE="auto"          # auto | clean | install | frontend | core
+BUILDER="auto"       # auto | host | docker
 REPLICATE=0
 SKIP_TESTS=1         # default skip — flip with --tests
 VERIFY=1             # always curl the page after install — flip with --no-verify
@@ -48,6 +59,10 @@ MODES (mutually exclusive; default: auto)
     --frontend, -f   Build only ui.frontend + ui.apps + all (-pl ... -am)
     --core           Build only core + all (-pl ... -am)
 
+BUILD RUNNER (mutually exclusive; default: auto)
+    --docker         Force the containerized build (Maven runs in $MAVEN_IMAGE)
+    --host-mvn       Force the host build (requires \`mvn\` on PATH + valid JAVA_HOME)
+
 FLAGS
     --publish, -p    Also replicate spa-mvn paths to AEM publish
     --tests          Run the it.tests + ui.tests modules (default: skip)
@@ -55,18 +70,21 @@ FLAGS
     --help, -h       This text
 
 AUTO-DETECT RULES
-    First build (no ui.frontend/node_modules)  →  --clean
-    Otherwise                                  →  --install  (fast incremental)
+    Build mode: first build (no ui.frontend/node_modules) → --clean; otherwise --install
+    Runner:     \`mvn\` on PATH + valid JAVA_HOME → host; otherwise docker fallback
 
 ENV VARS
-    JAVA_HOME       defaults to $JAVA_HOME_DEFAULT
+    JAVA_HOME       defaults to $JAVA_HOME_DEFAULT (host runner only)
+    MAVEN_IMAGE     defaults to $MAVEN_IMAGE (docker runner only)
+    MAVEN_CACHE_VOL defaults to $MAVEN_CACHE_VOL (named volume so .m2 survives)
     AEM_AUTHOR      $AEM_AUTHOR
     AEM_PUBLISH     $AEM_PUBLISH
     AEM_USER        $AEM_USER
     AEM_PASS        $AEM_PASS
 
 EXAMPLES
-    ./deploy.sh                      # smart default — full first time, fast after
+    ./deploy.sh                      # smart default — host mvn if present, else docker
+    ./deploy.sh --docker             # force containerized build (no JDK needed on host)
     ./deploy.sh -f                   # just rebuilt App.vue, push the Vue bundle
     ./deploy.sh -c -p                # clean rebuild and replicate to publish
     ./deploy.sh --core               # only core/ Java changed
@@ -81,6 +99,8 @@ while [ "$#" -gt 0 ]; do
     --install|-i)  MODE="install" ;;
     --frontend|-f) MODE="frontend" ;;
     --core)        MODE="core" ;;
+    --docker)      BUILDER="docker" ;;
+    --host-mvn)    BUILDER="host" ;;
     --publish|-p)  REPLICATE=1 ;;
     --tests)       SKIP_TESTS=0 ;;
     --no-verify)   VERIFY=0 ;;
@@ -96,17 +116,79 @@ step "Preflight"
 [ -d "$PROJECT_DIR" ] || die "PROJECT_DIR not a dir: $PROJECT_DIR"
 [ -f "$PROJECT_DIR/pom.xml" ] || die "no pom.xml in $PROJECT_DIR (run from spa-mvn/)"
 
-export JAVA_HOME="${JAVA_HOME:-$JAVA_HOME_DEFAULT}"
-[ -d "$JAVA_HOME" ] || die "JAVA_HOME does not exist: $JAVA_HOME"
-log "JAVA_HOME = $JAVA_HOME"
-
-command -v mvn  >/dev/null || die "mvn not on PATH — \`sudo apt install maven\`"
-command -v node >/dev/null || die "node not on PATH — needed for ui.frontend"
 command -v curl >/dev/null || die "curl not on PATH"
 
-mvn_v=$(mvn --version | head -1)
-log "$mvn_v"
-log "node $(node --version)"
+# ----- decide BUILDER: host (system mvn) vs docker (maven container) --------
+host_mvn_ok() {
+  command -v mvn  >/dev/null || return 1
+  command -v node >/dev/null || return 1
+  local jh="${JAVA_HOME:-$JAVA_HOME_DEFAULT}"
+  [ -d "$jh" ] || return 1
+  return 0
+}
+
+# DOCKER_CMD resolves to `docker` or `sudo docker` depending on group membership
+detect_docker_cmd() {
+  command -v docker >/dev/null || return 1
+  if docker info >/dev/null 2>&1; then
+    DOCKER_CMD="docker"; return 0
+  fi
+  if sudo -n docker info >/dev/null 2>&1; then
+    DOCKER_CMD="sudo docker"; return 0
+  fi
+  return 1
+}
+
+if [ "$BUILDER" = "auto" ]; then
+  if host_mvn_ok; then
+    BUILDER="host"
+  elif detect_docker_cmd; then
+    BUILDER="docker"
+  else
+    die "neither host mvn+JDK nor docker available — install one of them, or set JAVA_HOME"
+  fi
+fi
+
+case "$BUILDER" in
+  host)
+    export JAVA_HOME="${JAVA_HOME:-$JAVA_HOME_DEFAULT}"
+    [ -d "$JAVA_HOME" ] || die "JAVA_HOME does not exist: $JAVA_HOME"
+    command -v mvn  >/dev/null || die "--host-mvn but mvn not on PATH"
+    command -v node >/dev/null || die "--host-mvn but node not on PATH (needed for ui.frontend)"
+    log "builder: host    JAVA_HOME=$JAVA_HOME"
+    log "$(mvn --version | head -1)"
+    log "node $(node --version)"
+    ;;
+  docker)
+    detect_docker_cmd || die "--docker but docker not accessible (add user to docker group or run via sudo)"
+    log "builder: docker  image=$MAVEN_IMAGE  cache=$MAVEN_CACHE_VOL  ($DOCKER_CMD)"
+    # Pre-pull the image so subsequent runs don't spam pull output mid-build
+    if ! $DOCKER_CMD image inspect "$MAVEN_IMAGE" >/dev/null 2>&1; then
+      log "pulling $MAVEN_IMAGE (first time only)"
+      $DOCKER_CMD pull "$MAVEN_IMAGE" >/dev/null
+    fi
+    ;;
+  *) die "unhandled BUILDER=$BUILDER" ;;
+esac
+
+# mvn_run is the single dispatch point for every Maven invocation below.
+mvn_run() {
+  if [ "$BUILDER" = "docker" ]; then
+    log "(docker) mvn $*"
+    # --network host so Maven inside the container can hit localhost:4502 for autoInstallPackage.
+    # Linux-only — on macOS/Windows replace with -p 4502:4502 + -Daem.host=host.docker.internal.
+    $DOCKER_CMD run --rm \
+      --network host \
+      -v "$PROJECT_DIR:/build" \
+      -v "$MAVEN_CACHE_VOL:/root/.m2" \
+      -w /build \
+      "$MAVEN_IMAGE" \
+      mvn "$@"
+  else
+    log "mvn $*"
+    mvn "$@"
+  fi
+}
 
 # Author must be reachable for autoInstallPackage
 if ! curl -fsS -o /dev/null -u "$AEM_USER:$AEM_PASS" "$AEM_AUTHOR/libs/granite/core/content/login.html"; then
@@ -139,26 +221,24 @@ fi
 # ----- build -----------------------------------------------------------------
 cd "$PROJECT_DIR"
 
-MVN_ARGS=( -B -PautoInstallPackage -Dvault.user="$AEM_USER" -Dvault.password="$AEM_PASS" )
+MVN_ARGS=( -B -PautoInstallPackage \
+           -Daem.host=localhost -Daem.port=4502 \
+           -Dvault.user="$AEM_USER" -Dvault.password="$AEM_PASS" )
 [ "$SKIP_TESTS" = "1" ] && MVN_ARGS+=( -DskipTests -Dmaven.test.skip=true )
 
-step "Build  ($(c_bold "$MODE"))"
+step "Build  ($(c_bold "$MODE")  via $(c_bold "$BUILDER"))"
 case "$MODE" in
   clean)
-    log "mvn clean install ${MVN_ARGS[*]}"
-    mvn "${MVN_ARGS[@]}" clean install
+    mvn_run "${MVN_ARGS[@]}" clean install
     ;;
   install)
-    log "mvn install ${MVN_ARGS[*]}"
-    mvn "${MVN_ARGS[@]}" install
+    mvn_run "${MVN_ARGS[@]}" install
     ;;
   frontend)
-    log "mvn install -pl ui.frontend,ui.apps,all -am ${MVN_ARGS[*]}"
-    mvn "${MVN_ARGS[@]}" -pl ui.frontend,ui.apps,all -am install
+    mvn_run "${MVN_ARGS[@]}" -pl ui.frontend,ui.apps,all -am install
     ;;
   core)
-    log "mvn install -pl core,all -am ${MVN_ARGS[*]}"
-    mvn "${MVN_ARGS[@]}" -pl core,all -am install
+    mvn_run "${MVN_ARGS[@]}" -pl core,all -am install
     ;;
   *)
     die "unhandled MODE=$MODE"

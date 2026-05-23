@@ -2,7 +2,7 @@
 
 Adobe Dispatcher is **deployed and verified end-to-end**: in front of publish, serving the SPA, blocking dangerous paths, caching responses, and being purged on replication.
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23 (dispatcher upgraded 2.0.269 → 2.0.270 alongside AEM SDK JDK 21 — see `aem_sdk_jdk21.md`)
 
 ## Status
 
@@ -21,7 +21,7 @@ Last updated: 2026-05-22
 |---|---|---|---|
 | `aem-author` | (raw quickstart) | 4502, 5005 | aem-net |
 | `aem-publish` | (raw quickstart) | 4503, 5006 | aem-net, aem-docker_default |
-| `aem-dispatcher` | `adobe/aem-cs/dispatcher-publish:2.0.269` | 8080 → 80 | aem-net (alias `dispatcher`), aem-docker_default |
+| `aem-dispatcher` | `adobe/aem-cs/dispatcher-publish:2.0.270` | 8080 → 80 | aem-net (alias `dispatcher`), aem-docker_default |
 
 **Note on launching:** dispatcher is started **standalone via `docker run`**, NOT via `docker compose up`. The compose YAML defines it for reference + use on more powerful machines, but on this host running all three via compose pegs CPU at 100%. See `MEMORY` feedback entry.
 
@@ -31,9 +31,9 @@ Last updated: 2026-05-22
 aem-docker/
 ├── docker-compose.yml                              service defs (3 svcs) — DO NOT `compose up` on this host
 ├── dispatcher/
-│   ├── aem-sdk-dispatcher-tools-unix.sh            self-extracting installer (Makeself), 423 MB
-│   ├── dispatcher-sdk-2.0.269.1/                   extracted SDK
-│   │   ├── lib/dispatcher-publish-amd64.tar.gz     Docker image tarball (loaded)
+│   ├── aem-sdk-dispatcher-tools-2.0.270-unix.sh    self-extracting installer (Makeself), 56 MB
+│   ├── dispatcher-sdk-2.0.270/                     extracted SDK
+│   │   ├── lib/dispatcher-publish-amd64.tar.gz     Docker image tarball (loaded as :2.0.270)
 │   │   ├── lib/overwrite_cache_invalidation.sh     Adobe-provided permissive invalidate script
 │   │   ├── bin/, src/, docs/                       starter configs + helpers
 │   ├── overwrite_cache_invalidation.sh             copy of Adobe script, mounted into entrypoint
@@ -60,7 +60,7 @@ docker run -d \
   -e DISP_LOG_LEVEL=warn \
   -e REWRITE_LOG_LEVEL=warn \
   --restart unless-stopped \
-  adobe/aem-cs/dispatcher-publish:2.0.269
+  adobe/aem-cs/dispatcher-publish:2.0.270
 
 docker network connect --alias dispatcher aem-net aem-dispatcher
 ```

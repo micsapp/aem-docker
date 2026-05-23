@@ -14,10 +14,10 @@ async function getJson(path) {
   return res.json()
 }
 
-function master(fragmentNode) {
-  // strip JCR housekeeping
+function master(fragmentNode, path) {
+  // strip JCR housekeeping; tag with _path so edit-mode knows what to PATCH
   const m = fragmentNode?.['jcr:content']?.data?.master || {}
-  const out = {}
+  const out = { _path: path }
   for (const k of Object.keys(m)) {
     if (!k.startsWith('jcr:') && !k.startsWith('sling:') && !k.startsWith('cq:')) out[k] = m[k]
   }
@@ -25,12 +25,11 @@ function master(fragmentNode) {
 }
 
 export async function fetchHero() {
-  return master(await getJson(`${BASE}/hero.4.json`))
+  return master(await getJson(`${BASE}/hero.4.json`), 'hero')
 }
 
 export async function fetchCtaBanner() {
-  // Sling rewrote "cta-banner" → "cta_banner" when we imported via Sling POST
-  return master(await getJson(`${BASE}/cta_banner.4.json`))
+  return master(await getJson(`${BASE}/cta_banner.4.json`), 'cta_banner')
 }
 
 export async function fetchFeatures() {
@@ -38,7 +37,7 @@ export async function fetchFeatures() {
   return Object.keys(folder)
     .filter((k) => k.startsWith('feature_'))
     .sort()
-    .map((k) => master(folder[k]))
+    .map((k) => master(folder[k], `features/${k}`))
 }
 
 export async function fetchStats() {
@@ -46,7 +45,7 @@ export async function fetchStats() {
   return Object.keys(folder)
     .filter((k) => k.startsWith('stat_'))
     .sort()
-    .map((k) => master(folder[k]))
+    .map((k) => master(folder[k], `stats/${k}`))
 }
 
 export async function fetchAll() {

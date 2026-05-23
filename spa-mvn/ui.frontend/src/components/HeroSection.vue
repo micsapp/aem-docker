@@ -1,35 +1,54 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+import { editMode } from '../lib/edit.js'
+import EditableText from './EditableText.vue'
+
+const props = defineProps({
   hero: {
     type: Object,
     default: () => ({
-      eyebrow: '',
-      title: 'Loading…',
-      accent: '',
-      lede: '',
-      ctaPrimaryLabel: '',
-      ctaPrimaryUrl: '#',
-      ctaSecondaryLabel: '',
-      ctaSecondaryUrl: '#'
+      _path: 'hero',
+      eyebrow: '', title: 'Loading…', accent: '', lede: '',
+      ctaPrimaryLabel: '', ctaPrimaryUrl: '#',
+      ctaSecondaryLabel: '', ctaSecondaryUrl: '#'
     })
   }
 })
+const path = computed(() => props.hero._path || 'hero')
 </script>
 
 <template>
   <section class="hero">
     <div class="hero__bg"></div>
     <div class="container hero__inner">
-      <p v-if="hero.eyebrow" class="hero__eyebrow">{{ hero.eyebrow }}</p>
+      <EditableText
+        v-if="hero.eyebrow || editMode"
+        tag="p" class="hero__eyebrow"
+        :fragment-path="path" field-name="eyebrow"
+        :model-value="hero.eyebrow"
+      />
       <h1 class="hero__title">
-        {{ hero.title }} <span v-if="hero.accent" class="hero__accent">{{ hero.accent }}</span>.
+        <EditableText tag="span" :fragment-path="path" field-name="title" :model-value="hero.title" />
+        <EditableText
+          v-if="hero.accent || editMode"
+          tag="span" class="hero__accent"
+          :fragment-path="path" field-name="accent"
+          :model-value="hero.accent"
+        />.
       </h1>
-      <p v-if="hero.lede" class="hero__lede">{{ hero.lede }}</p>
+      <EditableText
+        v-if="hero.lede || editMode"
+        tag="p" class="hero__lede"
+        :fragment-path="path" field-name="lede"
+        :model-value="hero.lede"
+      />
       <div class="hero__actions">
-        <a v-if="hero.ctaPrimaryLabel" :href="hero.ctaPrimaryUrl || '#'" class="btn btn--primary">{{ hero.ctaPrimaryLabel }}</a>
-        <a v-if="hero.ctaSecondaryLabel" :href="hero.ctaSecondaryUrl || '#'" class="btn btn--ghost">
+        <a v-if="hero.ctaPrimaryLabel || editMode" :href="hero.ctaPrimaryUrl || '#'" class="btn btn--primary">
+          <EditableText tag="span" :fragment-path="path" field-name="ctaPrimaryLabel" :model-value="hero.ctaPrimaryLabel" />
+        </a>
+        <a v-if="hero.ctaSecondaryLabel || editMode" :href="hero.ctaSecondaryUrl || '#'" class="btn btn--ghost">
           <span class="btn__play">&#9658;</span>
-          {{ hero.ctaSecondaryLabel }}
+          <EditableText tag="span" :fragment-path="path" field-name="ctaSecondaryLabel" :model-value="hero.ctaSecondaryLabel" />
         </a>
       </div>
       <div class="hero__meta">

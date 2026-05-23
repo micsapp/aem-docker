@@ -1,4 +1,4 @@
-FROM eclipse-temurin:11-jdk-jammy
+FROM eclipse-temurin:21-jdk-jammy
 
 # Set up environment variables
 ENV AEM_HOME=/opt/aem \

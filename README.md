@@ -6,7 +6,7 @@ It is intentionally small. The repository contains only Docker configuration, st
 
 ## What This Project Provides
 
-- A Docker image for running AEM with Eclipse Temurin OpenJDK 11.
+- A Docker image for running AEM with Eclipse Temurin OpenJDK 21.
 - A single-container workflow for running a local AEM Author instance.
 - An optional Docker Compose workflow for running Author and Publish instances.
 - Persistent local AEM repository data through bind-mounted `crx-quickstart` folders.
@@ -43,20 +43,20 @@ Install the following on your machine:
 - Docker Compose v2, only if you want to use `docker compose`.
 - An AEM as a Cloud Service SDK quickstart jar from Adobe Software Distribution.
 
-The SDK jar tested with this project was:
+The SDK jar tested with this project is:
 
 ```text
 Adobe AEM Cloud Service/SDK
-Product-Version: 2024.4.15977.20240418T174835Z-240300
+Product-Version: 2026.5.25892.20260506T135241Z-260400
 ```
 
-That SDK requires Java 11, so the Dockerfile currently uses:
+That SDK requires Java 21, so the Dockerfile uses:
 
 ```dockerfile
-eclipse-temurin:11-jdk-jammy
+eclipse-temurin:21-jdk-jammy
 ```
 
-Newer AEM SDK releases may require a newer Java version. If your SDK fails during startup with a Java version error, update the base image in `Dockerfile` to the Java version required by your SDK.
+If you downgrade to an older SDK jar that still expects Java 11, change the base image to `eclipse-temurin:11-jdk-jammy` and rebuild. The history of this upgrade is captured in `aem_sdk_jdk21.md`.
 
 ## Get the AEM SDK Jar
 
@@ -370,25 +370,21 @@ aem-sdk/aem-quickstart.jar
 
 ### Java Version Error
 
-If startup fails with a message similar to:
-
-```text
-Quickstart does not run with newer versions as Java Specification 11 VM
-```
-
-then the SDK jar expects Java 11. Keep:
-
-```dockerfile
-FROM eclipse-temurin:11-jdk-jammy
-```
-
-If a newer SDK says it requires Java 21, update the Dockerfile:
+The current SDK jar (`2026.5.25892`) requires **JDK 21**. The Dockerfile pins:
 
 ```dockerfile
 FROM eclipse-temurin:21-jdk-jammy
 ```
 
-Then rebuild:
+If startup fails with a message like:
+
+```text
+Quickstart does not run with newer versions as Java Specification 21 VM
+```
+
+then the jar in `aem-sdk/aem-quickstart.jar` is older than the current SDK
+and expects Java 11. Either replace the jar with the matching `2026.5.25892`
+build, or revert the Dockerfile to `eclipse-temurin:11-jdk-jammy` and rebuild:
 
 ```bash
 docker build -t aem-local .

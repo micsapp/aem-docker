@@ -15,28 +15,100 @@ This is **Option B** from `spa_example.md` — what an AEM team would actually s
 
 | Tool | Version | Purpose |
 |---|---|---|
-| JDK | OpenJDK 11.0.30 | Compile core bundle + run AEM build plugins |
-| Maven | Apache Maven 3.8.7 | Build orchestration |
-| Node.js | v20.18.1 *(downloaded by frontend-maven-plugin)* | Vite + Vue compilation |
+| JDK | OpenJDK **21** (Eclipse Temurin) | Compile core bundle + run AEM build plugins. JDK 11 still works for older SDKs; see "JDK 11 fallback" below. |
+| Maven | Apache Maven **3.9.x** | Build orchestration |
+| Node.js | v18.x or v20.x *(downloaded by frontend-maven-plugin)* | Vite + Vue compilation |
 | AEM Project Archetype | v49 | Scaffold the multi-module project |
 | `maven-archetype-plugin` | **3.2.1 — pinned** | 3.3+ fails on binary `.gif` files in archetype templates |
 | Vue | 3.5.x | UI framework |
 | Vite | 5.4.x | Bundler |
 | `aem-clientlib-generator` | 1.8.x | Copy Vite output into the AEM clientlib structure |
 
+The JDK 21 jump was made when this stack was upgraded to the AEM SDK
+`2026.5.25892` build, which requires JDK 21 at runtime. See `aem_sdk_jdk21.md`
+for the upgrade history and the JDK-21 + dispatcher-2.0.270 stack details.
+
+## Two ways to build: host JDK or containerized
+
+`spa-mvn/deploy.sh` auto-detects which path to use:
+
+| Runner | When picked | What it does |
+|---|---|---|
+| **host** | `mvn` on `PATH` + valid `JAVA_HOME` | Runs `mvn install` directly on your shell. ~3× faster after warm caches because there's no docker process start cost per invocation. |
+| **docker** | host runner unavailable | Wraps every `mvn` call in `docker run --rm --network host -v $PROJECT_DIR:/build -v maven-cache:/root/.m2 maven:3.9-eclipse-temurin-21`. No JDK or Maven needed on the host. |
+
+Force either with `--host-mvn` / `--docker`. Verified working on:
+- Linux + WSL2 (host networking maps `localhost:4502` straight through to author)
+- macOS / Windows would need `-Daem.host=host.docker.internal` instead of `localhost` — see "Building on non-Linux" below.
+
+### Containerized build (no JDK on host)
+
+This is the path used in this repo's current development flow. Run from the
+repo root:
+
+```bash
+sudo docker run --rm \
+  --network host \
+  -v "$PWD/spa-mvn:/build" \
+  -v maven-cache:/root/.m2 \
+  -w /build \
+  maven:3.9-eclipse-temurin-21 \
+  mvn -B -PautoInstallPackage -DskipTests \
+      -Daem.host=localhost -Daem.port=4502 \
+      -Dvault.user=admin -Dvault.password=admin \
+      install
+```
+
+- **`--network host`** lets the maven container's `autoInstallPackage` POST
+  reach `http://localhost:4502/crx/packmgr/service.jsp`. Linux-only.
+- **`-v maven-cache:/root/.m2`** is a named docker volume so the ~/.m2 cache
+  survives between runs (first build downloads ~200 MB of plugins + AEM SDK
+  API jars; subsequent builds reuse them — ~2 min vs ~4 min cold).
+- **`-DskipTests`** skips the cypress + integration test modules.
+- The first build also downloads Node 18 inside the container (via the
+  `frontend-maven-plugin`); that's cached in `target/` of each module.
+
+Or just run `./spa-mvn/deploy.sh` — it auto-picks docker if no host JDK is found.
+
+### Host build (legacy / power-user path)
+
+```bash
+sudo apt-get install -y openjdk-21-jdk maven
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+./spa-mvn/deploy.sh --host-mvn
+```
+
+### JDK 11 fallback
+
+If you intentionally downgrade `aem-sdk/aem-quickstart.jar` to an older
+SDK (pre-2026.x) that requires JDK 11, also:
+- revert `Dockerfile` to `eclipse-temurin:11-jdk-jammy` and rebuild
+- use `maven:3.9-eclipse-temurin-11` (set `MAVEN_IMAGE=maven:3.9-eclipse-temurin-11`)
+- export `JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64` for the host path
+
+The pom.xml still specifies `<release>11</release>` for the compiler, so
+Java 21 builds run with `--release 11` source/target — fully compatible.
+
 ## Step-by-step what we did
 
 ### 1. Install JDK + Maven
 
 ```bash
+# Option A — containerized (recommended): no install needed, just docker
+docker --version           # >= 20.10
+./spa-mvn/deploy.sh        # auto-detects → docker
+
+# Option B — host install (faster iterative builds)
 sudo apt-get update
-sudo apt-get install -y openjdk-11-jdk-headless maven
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-java --version          # OpenJDK 11.0.30
-mvn --version           # Apache Maven 3.8.7
+sudo apt-get install -y openjdk-21-jdk maven
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+java --version             # openjdk 21.x
+mvn --version              # Apache Maven 3.9.x
 ```
 
-Adobe's Cloud SDK runs on JDK 11; the archetype expects 11. JDK 17 may work for some builds but Adobe's reference setup is 11.
+Adobe's current Cloud SDK (`2026.5.25892`) runs on JDK 21. The archetype-generated
+pom targets `<release>11</release>` for binary compatibility, so a JDK 21 host can
+still produce JDK-11-compatible bytecode if you need to swap to an older SDK later.
 
 ### 2. Generate the project from the archetype
 
@@ -283,7 +355,11 @@ Component patterns used:
 ### 8. Build and deploy
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+# Preferred — no host JDK required
+./spa-mvn/deploy.sh
+
+# Or explicitly via host mvn (if you've installed JDK 21 + Maven)
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 cd /home/mli/aem-docker/spa-mvn
 mvn -PautoInstallPackage clean install
 ```
@@ -423,7 +499,7 @@ See `spa_example.md` for the curl-only Option A (`spa-hello/` in this repo). Sid
 
 | | `spa-hello/` (Option A) | `spa-mvn/` (Option B) |
 |---|---|---|
-| Build tools needed | `node`, `curl` | JDK 11, Maven, Node (via plugin), npm |
+| Build tools needed | `node`, `curl` | JDK 21 + Maven 3.9 + Node (via plugin) — **or just docker** (see `deploy.sh`'s container path) |
 | Project files | 9 hand-written | ~80 generated + 12 modified/added |
 | Deploy mechanism | `curl -T` per file | `mvn -PautoInstallPackage` |
 | Deploy artifact | none — direct JCR writes | versioned `all-*.zip` package |

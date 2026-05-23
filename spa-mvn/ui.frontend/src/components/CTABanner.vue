@@ -1,12 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { editMode } from '../lib/edit.js'
+import EditableText from './EditableText.vue'
 
 const props = defineProps({
   cta: {
     type: Object,
-    default: () => ({ title: '', lede: '', ctaLabel: 'Submit' })
+    default: () => ({ _path: 'cta_banner', title: '', lede: '', ctaLabel: 'Submit' })
   }
 })
+const path = computed(() => props.cta._path || 'cta_banner')
 
 const email = ref('')
 const submitted = ref(false)
@@ -25,8 +28,8 @@ function submit() {
     <div class="container">
       <div class="cta__card">
         <div>
-          <h2 class="cta__title">{{ cta.title }}</h2>
-          <p class="cta__lede">{{ cta.lede }}</p>
+          <EditableText tag="h2" class="cta__title" :fragment-path="path" field-name="title" :model-value="cta.title" />
+          <EditableText tag="p"  class="cta__lede"  :fragment-path="path" field-name="lede"  :model-value="cta.lede" />
         </div>
 
         <form class="cta__form" @submit.prevent="submit">
@@ -38,7 +41,10 @@ function submit() {
             class="cta__input"
             :disabled="submitted"
           />
-          <button type="submit" class="cta__btn" :disabled="submitted">{{ buttonLabel }}</button>
+          <button v-if="editMode" type="button" class="cta__btn">
+            <EditableText tag="span" :fragment-path="path" field-name="ctaLabel" :model-value="cta.ctaLabel" />
+          </button>
+          <button v-else type="submit" class="cta__btn" :disabled="submitted">{{ buttonLabel }}</button>
         </form>
       </div>
     </div>

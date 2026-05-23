@@ -2,6 +2,12 @@
 
 This is a project template for AEM-based applications. It is intended as a best-practice set of examples as well as a potential starting point to develop your own functionality.
 
+> **In this repo:** use the wrapper `./deploy.sh` instead of the raw `mvn`
+> commands below — it auto-picks JDK 21 (host or containerized via
+> `maven:3.9-eclipse-temurin-21`), avoids the autoInstallPackage URL gotchas,
+> and runs the same verification curls as CI. See `../mvn_spa_dev.md` for the
+> full toolchain rationale, JDK 21 migration notes, and gotchas.
+
 ## Modules
 
 The main parts of the template are:

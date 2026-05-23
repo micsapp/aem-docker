@@ -1,4 +1,6 @@
 <script setup>
+import EditableText from './EditableText.vue'
+
 defineProps({
   stats: {
     type: Array,
@@ -11,9 +13,9 @@ defineProps({
   <section class="stats section--tight section--dark">
     <div class="container">
       <div class="stats__grid">
-        <div v-for="s in stats" :key="s.label" class="stats__item">
-          <div class="stats__value">{{ s.value }}</div>
-          <div class="stats__label">{{ s.label }}</div>
+        <div v-for="s in stats" :key="s._path || s.label" class="stats__item">
+          <EditableText tag="div" class="stats__value" :fragment-path="s._path" field-name="value" :model-value="s.value" />
+          <EditableText tag="div" class="stats__label" :fragment-path="s._path" field-name="label" :model-value="s.label" />
         </div>
       </div>
     </div>

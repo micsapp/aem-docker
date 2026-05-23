@@ -46,8 +46,9 @@ graph TD
 
 ### Container Runtime Configuration
 
-*   **Base Image:** `eclipse-temurin:11-jdk-jammy`
-    *   Ensures AEM runs under the official Eclipse Temurin OpenJDK 11 runtime.
+*   **Base Image:** `eclipse-temurin:21-jdk-jammy`
+    *   Ensures AEM runs under the official Eclipse Temurin OpenJDK 21 runtime.
+    *   Required by AEM SDK `2026.5.25892` and later. See `aem_sdk_jdk21.md` for upgrade history.
     *   Compatible with the local AEM as a Cloud Service SDK jar in `aem-sdk/aem-quickstart.jar`.
 *   **JVM Settings:**
     *   Min Memory (`-Xms`): `1024m`
@@ -62,7 +63,7 @@ graph TD
 
 ```text
 ~/aem_docker/
-├── Dockerfile              # Docker recipe for the AEM base Java 11 environment
+├── Dockerfile              # Docker recipe for the AEM base JDK 21 environment
 ├── docker-compose.yml       # Orchestrates the containers, volumes, and ports
 ├── entrypoint.sh           # Shell script to validate the jar and bootstrap AEM
 ├── aem_docker.md           # This documentation file

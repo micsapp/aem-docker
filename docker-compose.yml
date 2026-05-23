@@ -41,7 +41,7 @@ services:
       - aem-net
 
   dispatcher:
-    image: adobe/aem-cs/dispatcher-publish:2.0.269
+    image: adobe/aem-cs/dispatcher-publish:2.0.270
     container_name: aem-dispatcher
     depends_on: [publish]
     ports:

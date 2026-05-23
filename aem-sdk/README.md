@@ -6,7 +6,9 @@ Place your Adobe Experience Manager (AEM) as a Cloud Service SDK quickstart jar 
 
 1. **AEM Quickstart Jar**
    * File must be renamed to **`aem-quickstart.jar`**.
-   * Example: Rename `aem-sdk-quickstart-2026.05.21.jar` to `aem-quickstart.jar`.
+   * Example: Rename `aem-sdk-quickstart-2026.5.25892.20260506T135241Z-260400.jar` to `aem-quickstart.jar`.
+   * This SDK requires **JDK 21** at runtime; the Dockerfile already pins
+     `eclipse-temurin:21-jdk-jammy`.
 
 The AEM as a Cloud Service SDK no longer requires `license.properties` for local SDK startup.
 

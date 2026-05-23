@@ -35,10 +35,11 @@ function iconFor(key) { return icons[key] || icons.editor }
       <div class="features__grid">
         <FeatureCard
           v-for="f in items"
-          :key="f.title"
+          :key="f._path || f.title"
           :icon="iconFor(f.iconKey)"
           :title="f.title"
           :body="f.body"
+          :fragment-path="f._path"
         />
       </div>
     </div>
