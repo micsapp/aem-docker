@@ -1,0 +1,261 @@
+# =============================================================================
+# nginx.template — reverse proxy for the AEM stack (author / publish / dispatcher)
+# =============================================================================
+#
+# Use this when you want to expose the AEM containers publicly via your own
+# nginx + Let's Encrypt (an alternative to Cloudflare Tunnel).
+#
+# Placeholders use `__NAME__` so they don't collide with nginx's own $vars.
+# Substitute with sed before installing — see RENDER section below.
+#
+# -----------------------------------------------------------------------------
+# PLACEHOLDERS (substitute these)
+# -----------------------------------------------------------------------------
+#   __AUTHOR_FQDN__         public hostname for AEM author        e.g. aem-author.example.com
+#   __PUBLISH_FQDN__        (optional) direct publish hostname    e.g. aem-publish-direct.example.com
+#   __DISPATCHER_FQDN__     public hostname for the dispatcher    e.g. cms.example.com
+#
+#   __SSL_CERT__            path to fullchain cert                e.g. /etc/letsencrypt/live/example.com/fullchain.pem
+#   __SSL_KEY__             path to private key                   e.g. /etc/letsencrypt/live/example.com/privkey.pem
+#
+#   __AEM_HOST__            where the containers listen           e.g. 127.0.0.1 or 10.0.0.5
+#   __AUTHOR_PORT__         host-side port for author             e.g. 4502
+#   __PUBLISH_PORT__        host-side port for publish            e.g. 4503
+#   __DISPATCHER_PORT__     host-side port for dispatcher         e.g. 8080
+#
+#   __BASIC_AUTH_FILE__     htpasswd file path for author gate    e.g. /etc/nginx/aem-author.htpasswd
+#
+# -----------------------------------------------------------------------------
+# RENDER + INSTALL
+# -----------------------------------------------------------------------------
+#
+#     # 1. Substitute. Use sed with '|' delimiter so slashes in paths don't trip it.
+#     sed \
+#       -e 's|__AUTHOR_FQDN__|aem-author.example.com|g' \
+#       -e 's|__PUBLISH_FQDN__|aem-publish-direct.example.com|g' \
+#       -e 's|__DISPATCHER_FQDN__|cms.example.com|g' \
+#       -e 's|__SSL_CERT__|/etc/letsencrypt/live/example.com/fullchain.pem|g' \
+#       -e 's|__SSL_KEY__|/etc/letsencrypt/live/example.com/privkey.pem|g' \
+#       -e 's|__AEM_HOST__|127.0.0.1|g' \
+#       -e 's|__AUTHOR_PORT__|4502|g' \
+#       -e 's|__PUBLISH_PORT__|4503|g' \
+#       -e 's|__DISPATCHER_PORT__|8080|g' \
+#       -e 's|__BASIC_AUTH_FILE__|/etc/nginx/aem-author.htpasswd|g' \
+#       nginx.template | sudo tee /etc/nginx/sites-available/aem.conf >/dev/null
+#
+#     # 2. Add an htpasswd entry for the author (recommended; AEM ships admin/admin).
+#     sudo apt-get install -y apache2-utils
+#     sudo htpasswd -c /etc/nginx/aem-author.htpasswd alice
+#
+#     # 3. Enable + reload.
+#     sudo ln -s /etc/nginx/sites-available/aem.conf /etc/nginx/sites-enabled/aem.conf
+#     sudo nginx -t && sudo systemctl reload nginx
+#
+#     # 4. Get a cert (if you don't have one). Snapshot:
+#     sudo certbot --nginx -d cms.example.com -d aem-author.example.com
+#
+# -----------------------------------------------------------------------------
+# COMMENT OUT BLOCKS YOU DON'T NEED
+# -----------------------------------------------------------------------------
+#   * Dispatcher in front of publish is the production pattern — keep that,
+#     skip the standalone publish vhost. Or keep publish for back-channel use.
+#   * Author is internal-only in production — keep it firewalled or behind
+#     Basic Auth / a VPN if you must expose it.
+#
+# -----------------------------------------------------------------------------
+# DEFENCE IN DEPTH
+# -----------------------------------------------------------------------------
+#   1. nginx layer (this file) — TLS termination, Basic Auth, rate limit
+#   2. AEM Dispatcher filter rules — dispatcher/src/conf.dispatcher.d/filters/
+#   3. AEM ACLs in the JCR — per-resource permissions
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Helper: WebSocket upgrade map. Required at the http{} level — keep first.
+# (Move to /etc/nginx/conf.d/upgrade-map.conf if you already have one.)
+# -----------------------------------------------------------------------------
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+
+# -----------------------------------------------------------------------------
+# Per-IP rate limit zone for the public dispatcher. Declare ONCE per nginx process.
+# -----------------------------------------------------------------------------
+limit_req_zone $binary_remote_addr zone=aem_pub_zone:10m rate=30r/s;
+
+
+# -----------------------------------------------------------------------------
+# 80 → 443 redirect (covers all three hostnames in one server block)
+# -----------------------------------------------------------------------------
+server {
+    listen      80;
+    listen      [::]:80;
+    server_name __AUTHOR_FQDN__ __PUBLISH_FQDN__ __DISPATCHER_FQDN__;
+
+    # Let's Encrypt HTTP-01 challenge path stays accessible over plain HTTP.
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+
+# -----------------------------------------------------------------------------
+# AUTHOR  (https://__AUTHOR_FQDN__  →  http://__AEM_HOST__:__AUTHOR_PORT__)
+#
+# Internal-only in real environments. Always gate with Basic Auth (or VPN,
+# Cloudflare Access, OAuth proxy, etc.) — AEM ships admin/admin.
+# -----------------------------------------------------------------------------
+server {
+    listen      443 ssl http2;
+    listen      [::]:443 ssl http2;
+    server_name __AUTHOR_FQDN__;
+
+    ssl_certificate     __SSL_CERT__;
+    ssl_certificate_key __SSL_KEY__;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1h;
+
+    # Big enough for package upload via /crx/packmgr/service.jsp (up to 500 MB).
+    client_max_body_size       500m;
+    proxy_request_buffering    off;
+
+    # AEM Sites editor uses long-poll + websocket; allow long idle periods.
+    proxy_read_timeout         86400s;
+    proxy_send_timeout         86400s;
+    proxy_connect_timeout      60s;
+
+    # Forward client metadata so AEM logs the real visitor IP, not 127.0.0.1.
+    proxy_set_header  Host              $host;
+    proxy_set_header  X-Real-IP         $remote_addr;
+    proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header  X-Forwarded-Proto $scheme;
+    proxy_set_header  X-Forwarded-Host  $host;
+
+    # WebSocket upgrade (Sites editor, content fragment editor live updates).
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade    $http_upgrade;
+    proxy_set_header   Connection $connection_upgrade;
+
+    # === Basic Auth gate (RECOMMENDED) ====================================
+    # Uncomment + ensure __BASIC_AUTH_FILE__ exists.
+    # auth_basic              "AEM Author";
+    # auth_basic_user_file    __BASIC_AUTH_FILE__;
+    #
+    # IMPORTANT: even with Basic Auth here, also rotate the AEM admin
+    # password from admin/admin — see aem_docker.md.
+
+    # Hard-block externally reachable sensitive endpoints (defence-in-depth).
+    location ~* ^/(system|crx)/ {
+        # Allow only your office/VPN here, if you trust some IPs:
+        # allow 10.0.0.0/8;
+        # allow 192.168.0.0/16;
+        # deny  all;
+        return 404;
+    }
+
+    location / {
+        proxy_pass http://__AEM_HOST__:__AUTHOR_PORT__;
+    }
+}
+
+
+# -----------------------------------------------------------------------------
+# DISPATCHER  (https://__DISPATCHER_FQDN__  →  http://__AEM_HOST__:__DISPATCHER_PORT__)
+#
+# Canonical public face. Apache + mod_dispatcher already filters dangerous
+# paths and caches. Nginx in front of it adds TLS and rate limiting.
+# -----------------------------------------------------------------------------
+server {
+    listen      443 ssl http2;
+    listen      [::]:443 ssl http2;
+    server_name __DISPATCHER_FQDN__;
+
+    ssl_certificate     __SSL_CERT__;
+    ssl_certificate_key __SSL_KEY__;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    client_max_body_size       10m;
+    proxy_read_timeout         60s;
+    proxy_send_timeout         60s;
+    proxy_connect_timeout      10s;
+
+    proxy_set_header  Host              $host;
+    proxy_set_header  X-Real-IP         $remote_addr;
+    proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header  X-Forwarded-Proto $scheme;
+    proxy_set_header  X-Forwarded-Host  $host;
+
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade    $http_upgrade;
+    proxy_set_header   Connection $connection_upgrade;
+
+    # Strong security headers (the dispatcher sets some; nginx hardens further).
+    add_header Strict-Transport-Security "max-age=63072000; includeSubdomains" always;
+    add_header X-Content-Type-Options    "nosniff" always;
+    add_header X-Frame-Options           "SAMEORIGIN" always;
+    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
+
+    # Per-IP rate limit (smoothes burst spam to /content/...).
+    limit_req zone=aem_pub_zone burst=60 nodelay;
+    limit_req_status 429;
+
+    # Belt-and-braces deny for endpoints the dispatcher also blocks.
+    # If both layers agree, no chance one is forgotten.
+    location ~* ^/(system|crx|bin|libs|apps)/ { return 404; }
+    location ~ \.json$                         { return 404; }
+
+    location / {
+        proxy_pass http://__AEM_HOST__:__DISPATCHER_PORT__;
+    }
+}
+
+
+# -----------------------------------------------------------------------------
+# PUBLISH (direct, bypassing dispatcher)  — optional / debug
+#
+# Useful for back-channel access (replication queue, monitoring), but in
+# production the dispatcher should be the only public path to publish.
+# Keep this block COMMENTED OUT unless you specifically need it.
+# -----------------------------------------------------------------------------
+#
+# server {
+#     listen      443 ssl http2;
+#     listen      [::]:443 ssl http2;
+#     server_name __PUBLISH_FQDN__;
+#
+#     ssl_certificate     __SSL_CERT__;
+#     ssl_certificate_key __SSL_KEY__;
+#     ssl_protocols       TLSv1.2 TLSv1.3;
+#     ssl_ciphers         HIGH:!aNULL:!MD5;
+#
+#     client_max_body_size       50m;
+#     proxy_read_timeout         300s;
+#     proxy_send_timeout         300s;
+#
+#     proxy_set_header  Host              $host;
+#     proxy_set_header  X-Real-IP         $remote_addr;
+#     proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+#     proxy_set_header  X-Forwarded-Proto $scheme;
+#     proxy_set_header  X-Forwarded-Host  $host;
+#
+#     proxy_http_version 1.1;
+#     proxy_set_header   Upgrade    $http_upgrade;
+#     proxy_set_header   Connection $connection_upgrade;
+#
+#     location ~* ^/(system|crx)/ { return 404; }
+#
+#     location / {
+#         proxy_pass http://__AEM_HOST__:__PUBLISH_PORT__;
+#     }
+# }
