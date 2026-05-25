@@ -2,35 +2,42 @@
 
 How to expose this machine's services (e.g. AEM Author on `:4502`, Publish on `:4503`) over HTTPS via Cloudflare Tunnel — no port forwarding, no firewall rules.
 
-## Current state on this host
+## Current state on this host (minipc1)
 
 | Item | Value |
 |---|---|
 | `cloudflared` binary | `/usr/local/bin/cloudflared` (v2026.2.0) |
 | Config dir | `~/.cloudflared/` |
-| Login cert | `~/.cloudflared/cert.pem` (already authenticated) |
-| Active tunnel | `mytunnel` (UUID `<TUNNEL_UUID>`) |
+| Login cert | `~/.cloudflared/cert.pem` (already authenticated to the `micstec.com` zone) |
+| Active tunnel | `minipc1` (UUID `6e8c83a3-88a3-42d3-ad27-9833a5d0ebc6`) |
 | Active config | `~/.cloudflared/config.yml` |
-| Runner | tmux session `cloudflared` → `cloudflared tunnel run mytunnel` |
+| Runner | tmux session `cloudflared` → `cloudflared tunnel run minipc1` |
 | Log | `~/micsapp-webterminal/cloudflared.log` |
 
-Existing ingress in `~/.cloudflared/config.yml`:
+Current ingress in `~/.cloudflared/config.yml`:
 
 ```yaml
-tunnel: mytunnel
-credentials-file: /home/mli/.cloudflared/<TUNNEL_UUID>.json
+tunnel: minipc1
+credentials-file: /home/mli/.cloudflared/6e8c83a3-88a3-42d3-ad27-9833a5d0ebc6.json
 
 ingress:
-  - hostname: mytunnel.example.com
+  - hostname: minipc1.micstec.com
     service: http://localhost:7680
-  - hostname: md-docs.example.com
-    service: http://localhost:80
-  - hostname: ssh-mytunnel.example.com
-    service: ssh://localhost:22
+
+  # AEM stage stack on this host (minipc1)
+  - hostname: author.micstec.com
+    service: http://localhost:4502
+  - hostname: site.micstec.com
+    service: http://localhost:8080
+
   - service: http_status:404
 ```
 
-Because a tunnel and login cert already exist, the easiest path is to **add a new hostname to the existing `mytunnel` tunnel** rather than creating a brand-new one.
+Public AEM endpoints currently live:
+- `https://author.micstec.com` → author (`:4502`) — **admin/admin still active, gate behind Cloudflare Access**
+- `https://site.micstec.com` → dispatcher (`:8080`) → publish — safe to leave public (dispatcher filters block `/system/console`, `/crx/de`, `.json` paths)
+
+Because a tunnel and login cert already exist, **add a new hostname to the existing `minipc1` tunnel** rather than creating a brand-new one. The walkthrough below uses `example.com` as a placeholder; in practice, substitute `micstec.com`.
 
 ---
 
