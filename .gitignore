@@ -30,3 +30,4 @@ aem-publish/crx-quickstart/
 Thumbs.db
 *.swp
 *.tmp
+*.bak
